@@ -1,13 +1,13 @@
-package co.edu.unbosque.Products;
+package co.edu.unbosque.model.persistence;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ProductsApplication {
+public class SalesApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ProductsApplication.class, args);
+		SpringApplication.run(SalesApplication.class, args);
 	}
 
 }
