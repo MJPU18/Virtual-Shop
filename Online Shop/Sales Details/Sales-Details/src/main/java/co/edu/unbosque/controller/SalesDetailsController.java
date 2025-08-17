@@ -22,7 +22,7 @@ import jakarta.transaction.Transactional;
 
 @RestController
 @RequestMapping("/salesDetails")
-@CrossOrigin(origins = { "http://localhost:8082", "*" })
+@CrossOrigin(origins = { "http://localhost:8081", "*" })
 @Transactional
 public class SalesDetailsController {
 
