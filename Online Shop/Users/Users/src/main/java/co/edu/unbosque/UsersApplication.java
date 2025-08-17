@@ -1,13 +1,13 @@
-package co.edu.unbosque.Sales;
+package co.edu.unbosque;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SalesApplication {
+public class UsersApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SalesApplication.class, args);
+		SpringApplication.run(UsersApplication.class, args);
 	}
 
 }

@@ -23,7 +23,7 @@ import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/provider")
-@CrossOrigin(origins = {"http://localhost:8081", "*" })
+@CrossOrigin(origins = {"http://localhost:8083", "*" })
 @Transactional
 public class ProviderController {
 
