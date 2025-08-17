@@ -21,8 +21,7 @@ import jakarta.transaction.Transactional;
 @RestController
 @RequestMapping("/sale")
 @CrossOrigin(origins = { "http://localhost:8082","*" })
-
-
+@Transactional
 public class SaleController {
 
 	@Autowired
@@ -31,6 +30,7 @@ public class SaleController {
 	
 	public SaleController() {
 	}
+	
 	@PostMapping(path = "/create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> createSale(@RequestBody Sale newSale){
 		newSale.setCodeSale(null);
@@ -57,7 +57,7 @@ public class SaleController {
     }
   
     
-    @DeleteMapping("/delete/{codeSale}")
+    @DeleteMapping(path = "/delete/{codeSale}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long codeSale) {
     	Sale deletedSale = saleServ.deleteByCodeSale(codeSale);
         
