@@ -20,7 +20,7 @@ import co.edu.unbosque.service.UserService;
 import jakarta.transaction.Transactional;
 
 @RestController
-@CrossOrigin(origins = { "http://localhost:8080","*"})
+@CrossOrigin(origins = { "http://localhost:8086","*"})
 @Transactional
 public class UserController {
 	
