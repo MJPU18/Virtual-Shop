@@ -42,6 +42,10 @@ public class ProviderService {
 		return 1;
 	}
 	
+	public boolean exists(Long nitprovider) {
+		return providerRepository.existsById(nitprovider);
+	}
+	
 	public List<Provider> getAll(){
 		return providerRepository.findAll();
 	}

@@ -22,7 +22,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @RestController
-@RequestMapping("/provider")
 @CrossOrigin(origins = {"http://localhost:8083", "*" })
 @Transactional
 public class ProviderController {
@@ -63,5 +62,11 @@ public class ProviderController {
 	@GetMapping(path = "/list")
 	public ResponseEntity<List<Provider>> listProviders(){
 		return ResponseEntity.ok(providerService.getAll());
-	} 
+	}
+	
+	@GetMapping(path = "/checkprovider/{nitprovider}")
+	public ResponseEntity<Boolean> checkProviderExists(@PathVariable Long nitprovider) {
+	    boolean exists = providerService.exists(nitprovider);
+	    return new ResponseEntity<>(exists, HttpStatus.OK);
+	}
 }
