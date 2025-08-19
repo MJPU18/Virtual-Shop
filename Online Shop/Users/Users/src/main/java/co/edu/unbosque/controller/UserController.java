@@ -95,5 +95,11 @@ public class UserController {
 		}
 		return new ResponseEntity<String>("Document not found.",HttpStatus.NOT_FOUND);
 	}
+	
+	@GetMapping(path = "/checkuser/{documentId}")
+	public ResponseEntity<Boolean> checkUserExists(@PathVariable Long documentId) {
+	    boolean exists = userServ.exist(documentId);
+	    return new ResponseEntity<>(exists, HttpStatus.OK);
+	}
 
 }

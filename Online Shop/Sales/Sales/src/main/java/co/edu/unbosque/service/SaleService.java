@@ -55,4 +55,15 @@ public class SaleService implements CRUDOperation<Sale>{
 	public boolean exist(Long id) {
 		return saleRepo.findByCodeSale(id).isPresent();
 	}
+	
+	public boolean validateSaleValues(Long codeSale, double valueSale, double totalSale) {
+	    Optional<Sale> saleOpt = saleRepo.findById(codeSale);
+	    if (saleOpt.isPresent()) {
+	        Sale sale = saleOpt.get();
+	        return Double.compare(sale.getValueSale(), valueSale) == 0 &&
+	               Double.compare(sale.getTotalSale(), totalSale) == 0;
+	    }
+	    return false;
+	}
+	
 }

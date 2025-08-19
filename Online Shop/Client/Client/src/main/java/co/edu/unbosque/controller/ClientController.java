@@ -79,5 +79,11 @@ public class ClientController {
 		}
 		return new ResponseEntity<String>("Document not found.",HttpStatus.NOT_FOUND);
 	}
+	
+	@GetMapping(path = "/checkclient/{documentId}")
+	public ResponseEntity<Boolean> checkClientExists(@PathVariable Long documentId) {
+	    boolean exists = clientServ.exist(documentId);
+	    return new ResponseEntity<>(exists, HttpStatus.OK);
+	}
 
 }

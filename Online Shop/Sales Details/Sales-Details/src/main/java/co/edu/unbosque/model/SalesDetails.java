@@ -15,12 +15,8 @@ public class SalesDetails {
 
 	private Long productCode;
 	private Long salesCode;
-
-	@Transient
 	private double totalValue;
-	@Transient
 	private double salesValue;
-	@Transient
 	private double vatValue;
 	
 	public SalesDetails() {}

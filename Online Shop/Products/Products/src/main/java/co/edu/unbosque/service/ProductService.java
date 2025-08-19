@@ -57,4 +57,13 @@ public class ProductService implements CRUDOperation<Product>{
 	public boolean exist(Long id) {
 		return prodRepo.findByProductCode(id).isPresent();
 	}
+	
+	public boolean validateProductIva(Long productCode, double ivaPurchase) {
+	    Optional<Product> productOpt = prodRepo.findById(productCode);
+	    if (productOpt.isPresent()) {
+	        Product product = productOpt.get();
+	        return product.getIvaPurchase() > 0;
+	    }
+	    return false;
+	}
 }
