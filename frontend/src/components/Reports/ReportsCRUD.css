@@ -1,0 +1,129 @@
+.reports-container {
+    padding: 2rem;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.table-header h2 {
+    margin: 0;
+    color: #1976d2;
+}
+
+.report-card {
+    margin-bottom: 2rem;
+}
+
+.report-card .p-card-title {
+    color: #1976d2;
+    margin-bottom: 1.5rem;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+}
+
+.p-datatable .p-datatable-tbody > tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+    background-color: #e9ecef;
+    transition: background-color 0.2s;
+}
+
+.total-general-container {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.total-general-card {
+    background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.total-general-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.2rem;
+}
+
+.total-general-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.total-general-card small {
+    opacity: 0.9;
+}
+
+.total-general {
+    text-align: right;
+    padding: 1rem;
+    background-color: #e9ecef;
+    border-top: 2px solid #1976d2;
+    font-size: 1.1rem;
+}
+
+.p-tabview .p-tabview-nav {
+    background: #f8f9fa;
+    border: none;
+}
+
+.p-tabview .p-tabview-nav li .p-tabview-nav-link {
+    color: #495057;
+    font-weight: 500;
+}
+
+.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+    color: #1976d2;
+    border-color: #1976d2;
+}
+
+.p-tabview .p-tabview-panels {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+
+@media screen and (max-width: 960px) {
+    .reports-container {
+        padding: 1rem;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .table-header h2 {
+        margin-bottom: 1rem;
+    }
+    
+    .total-general-value {
+        font-size: 1.5rem;
+    }
+    
+    .p-datatable .p-datatable-thead > tr > th,
+    .p-datatable .p-datatable-tbody > tr > td {
+        word-wrap: break-word;
+    }
+    
+    .p-tabview .p-tabview-nav {
+        flex-direction: column;
+    }
+    
+    .p-tabview .p-tabview-nav li {
+        width: 100%;
+    }
+}
