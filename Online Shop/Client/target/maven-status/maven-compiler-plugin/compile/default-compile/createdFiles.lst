@@ -1,0 +1,8 @@
+co\edu\unbosque\ClientApplication.class
+co\edu\unbosque\ServletInitializer.class
+co\edu\unbosque\service\CRUDOperation.class
+co\edu\unbosque\controller\ClientController.class
+co\edu\unbosque\repository\ClientRepository.class
+co\edu\unbosque\service\ClientService.class
+co\edu\unbosque\controller\ClientController$UpdateClient.class
+co\edu\unbosque\model\Client.class

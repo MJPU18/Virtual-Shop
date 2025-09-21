@@ -1,0 +1,8 @@
+co\edu\unbosque\repository\UserRepository.class
+co\edu\unbosque\controller\UserController$UpdateUser.class
+co\edu\unbosque\service\UserService.class
+co\edu\unbosque\ServletInitializer.class
+co\edu\unbosque\service\CRUDOperation.class
+co\edu\unbosque\controller\UserController.class
+co\edu\unbosque\model\User.class
+co\edu\unbosque\UsersApplication.class
