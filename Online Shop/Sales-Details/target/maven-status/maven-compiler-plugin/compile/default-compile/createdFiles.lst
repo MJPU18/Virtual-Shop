@@ -1,0 +1,10 @@
+co\edu\unbosque\controller\SalesDetailsController.class
+co\edu\unbosque\client\SaleClient.class
+co\edu\unbosque\ServletInitializer.class
+co\edu\unbosque\controller\SalesDetailsController$UpdateSalesDetail.class
+co\edu\unbosque\model\SalesDetails.class
+co\edu\unbosque\client\ProductClient.class
+co\edu\unbosque\services\SalesDetailsService.class
+co\edu\unbosque\repository\SalesDetailsRepository.class
+co\edu\unbosque\services\ValidationService.class
+co\edu\unbosque\SalesDetailsApplication.class

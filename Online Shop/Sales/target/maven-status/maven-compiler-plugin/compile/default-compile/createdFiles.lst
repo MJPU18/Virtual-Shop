@@ -1,0 +1,11 @@
+co\edu\unbosque\SalesApplication.class
+co\edu\unbosque\client\ClientClient.class
+co\edu\unbosque\ServletInitializer.class
+co\edu\unbosque\repository\SaleRepository.class
+co\edu\unbosque\controller\SaleController$SaleDTO.class
+co\edu\unbosque\service\CRUDOperation.class
+co\edu\unbosque\service\SaleService.class
+co\edu\unbosque\controller\SaleController.class
+co\edu\unbosque\service\ValidationService.class
+co\edu\unbosque\client\UserClient.class
+co\edu\unbosque\model\Sale.class

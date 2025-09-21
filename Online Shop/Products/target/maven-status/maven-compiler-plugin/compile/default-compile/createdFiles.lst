@@ -1,0 +1,9 @@
+co\edu\unbosque\service\ProductService.class
+co\edu\unbosque\controller\ProductController.class
+co\edu\unbosque\ProductsApplication.class
+co\edu\unbosque\ServletInitializer.class
+co\edu\unbosque\client\ProviderClient.class
+co\edu\unbosque\model\Product.class
+co\edu\unbosque\repository\ProductRepository.class
+co\edu\unbosque\service\CRUDOperation.class
+co\edu\unbosque\service\ValidationService.class
