@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -6,6 +6,7 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Toast } from 'primereact/toast';
+import { userService } from '../../services/userService';
 import './UsersCRUD.css';
 
 const UsersCRUD = () => {
@@ -13,7 +14,43 @@ const UsersCRUD = () => {
   const [user, setUser] = useState({});
   const [userDialog, setUserDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const toast = useRef(null);
+
+  // Cargar usuarios al iniciar el componente
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const usersData = await userService.getAll();
+      setUsers(usersData);
+    } catch (error) {
+      showError('Error al cargar usuarios: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showError = (message) => {
+    toast.current.show({
+      severity: 'error',
+      summary: 'Error',
+      detail: message,
+      life: 5000
+    });
+  };
+
+  const showSuccess = (message) => {
+    toast.current.show({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: message,
+      life: 3000
+    });
+  };
 
   const openNew = () => {
     setUser({});
@@ -26,77 +63,64 @@ const UsersCRUD = () => {
     setUserDialog(false);
   };
 
-  const saveUser = () => {
+  const saveUser = async () => {
     setSubmitted(true);
 
-    if (user.cedula && user.nombre && user.correo && user.usuario && user.contraseña) {
-      let _users = [...users];
-      
-      // Validar si la cédula ya existe
-      const existingUserByCedula = _users.find(u => u.cedula === user.cedula);
-      if (existingUserByCedula && (!user.id || user.id !== existingUserByCedula.id)) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Error', 
-          detail: 'Ya existe un usuario con esta cédula', 
-          life: 3000 
-        });
-        return;
-      }
+    // Validar campos requeridos según la estructura del backend
+    if (!user.documentId || !user.email || !user.userName || !user.usuario || !user.password) {
+      showError('Todos los campos son requeridos');
+      return;
+    }
 
-      // Validar si el nombre de usuario ya existe
-      const existingUserByUsername = _users.find(u => u.usuario === user.usuario);
-      if (existingUserByUsername && (!user.id || user.id !== existingUserByUsername.id)) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Error', 
-          detail: 'Ya existe un usuario con este nombre de usuario', 
-          life: 3000 
-        });
-        return;
-      }
+    try {
+      // Preparar datos para el backend (con los nombres de campo correctos)
+      const userData = {
+        documentId: parseInt(user.documentId),
+        email: user.email,
+        userName: user.userName,
+        usuario: user.usuario,
+        password: user.password
+      };
 
       if (user.id) {
         // Editar usuario existente
-        const index = _users.findIndex(u => u.id === user.id);
-        _users[index] = user;
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Usuario actualizado', 
-          life: 3000 
-        });
+        await userService.update(user.documentId, userData);
+        showSuccess('Usuario actualizado correctamente');
       } else {
         // Crear nuevo usuario
-        _users.push({...user, id: Math.random()});
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Usuario creado', 
-          life: 3000 
-        });
+        await userService.create(userData);
+        showSuccess('Usuario creado correctamente');
       }
-      
-      setUsers(_users);
+
+      // Recargar la lista de usuarios
+      await loadUsers();
       setUserDialog(false);
       setUser({});
+    } catch (error) {
+      showError('Error al guardar usuario: ' + error.message);
     }
   };
 
   const editUser = (user) => {
-    setUser({...user});
+    setUser({
+      id: user.documentId,
+      documentId: user.documentId,
+      userName: user.userName,
+      email: user.email,
+      usuario: user.usuario,
+      password: user.password
+    });
     setUserDialog(true);
   };
 
-  const deleteUser = (user) => {
-    let _users = users.filter(u => u.id !== user.id);
-    setUsers(_users);
-    toast.current.show({ 
-      severity: 'success', 
-      summary: 'Éxito', 
-      detail: 'Usuario eliminado', 
-      life: 3000 
-    });
+  const deleteUser = async (user) => {
+    try {
+      await userService.delete(user.documentId);
+      showSuccess('Usuario eliminado correctamente');
+      await loadUsers();
+    } catch (error) {
+      showError('Error al eliminar usuario: ' + error.message);
+    }
   };
 
   const onInputChange = (e, name) => {
@@ -135,10 +159,10 @@ const UsersCRUD = () => {
         </div>
 
         <DataTable value={users} responsiveLayout="scroll" paginator rows={10} 
-                   emptyMessage="No se encontraron usuarios.">
-          <Column field="cedula" header="Cédula" sortable></Column>
-          <Column field="nombre" header="Nombre Completo" sortable></Column>
-          <Column field="correo" header="Correo Electrónico"></Column>
+                   loading={loading} emptyMessage="No se encontraron usuarios.">
+          <Column field="documentId" header="Cédula" sortable></Column>
+          <Column field="userName" header="Nombre Completo" sortable></Column>
+          <Column field="email" header="Correo Electrónico"></Column>
           <Column field="usuario" header="Usuario" sortable></Column>
           <Column body={actionBodyTemplate} header="Acciones" exportable={false} style={{ minWidth: '8rem' }}></Column>
         </DataTable>
@@ -147,41 +171,63 @@ const UsersCRUD = () => {
       <Dialog visible={userDialog} style={{ width: '500px' }} header="Detalles de Usuario" 
               modal className="p-fluid" footer={userDialogFooter} onHide={hideDialog}>
         <div className="p-field">
-          <label htmlFor="cedula">Cédula *</label>
-          <InputText id="cedula" value={user.cedula || ''} 
-                     onChange={(e) => onInputChange(e, 'cedula')} 
-                     required autoFocus 
-                     className={submitted && !user.cedula ? 'p-invalid' : ''} />
-          {submitted && !user.cedula && <small className="p-error">Cédula es requerida.</small>}
+          <label htmlFor="documentId">Cédula *</label>
+          <InputText 
+            id="documentId" 
+            value={user.documentId || ''} 
+            onChange={(e) => onInputChange(e, 'documentId')} 
+            required 
+            autoFocus 
+            keyfilter="int" 
+            className={submitted && !user.documentId ? 'p-invalid' : ''} 
+          />
+          {submitted && !user.documentId && <small className="p-error">Cédula es requerida.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="nombre">Nombre Completo *</label>
-          <InputText id="nombre" value={user.nombre || ''} 
-                     onChange={(e) => onInputChange(e, 'nombre')} 
-                     required className={submitted && !user.nombre ? 'p-invalid' : ''} />
-          {submitted && !user.nombre && <small className="p-error">Nombre es requerido.</small>}
+          <label htmlFor="userName">Nombre Completo *</label>
+          <InputText 
+            id="userName" 
+            value={user.userName || ''} 
+            onChange={(e) => onInputChange(e, 'userName')} 
+            required 
+            className={submitted && !user.userName ? 'p-invalid' : ''} 
+          />
+          {submitted && !user.userName && <small className="p-error">Nombre es requerido.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="correo">Correo Electrónico *</label>
-          <InputText id="correo" value={user.correo || ''} 
-                     onChange={(e) => onInputChange(e, 'correo')} 
-                     required className={submitted && !user.correo ? 'p-invalid' : ''} />
-          {submitted && !user.correo && <small className="p-error">Correo es requerido.</small>}
+          <label htmlFor="email">Correo Electrónico *</label>
+          <InputText 
+            id="email" 
+            value={user.email || ''} 
+            onChange={(e) => onInputChange(e, 'email')} 
+            required 
+            className={submitted && !user.email ? 'p-invalid' : ''} 
+          />
+          {submitted && !user.email && <small className="p-error">Correo es requerido.</small>}
         </div>
         <div className="p-field">
           <label htmlFor="usuario">Usuario *</label>
-          <InputText id="usuario" value={user.usuario || ''} 
-                     onChange={(e) => onInputChange(e, 'usuario')} 
-                     required className={submitted && !user.usuario ? 'p-invalid' : ''} />
+          <InputText 
+            id="usuario" 
+            value={user.usuario || ''} 
+            onChange={(e) => onInputChange(e, 'usuario')} 
+            required 
+            className={submitted && !user.usuario ? 'p-invalid' : ''} 
+          />
           {submitted && !user.usuario && <small className="p-error">Usuario es requerido.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="contraseña">Contraseña *</label>
-          <Password id="contraseña" value={user.contraseña || ''} 
-                    onChange={(e) => onInputChange(e, 'contraseña')} 
-                    required feedback={false} 
-                    className={submitted && !user.contraseña ? 'p-invalid' : ''} />
-          {submitted && !user.contraseña && <small className="p-error">Contraseña es requerida.</small>}
+          <label htmlFor="password">Contraseña *</label>
+          <Password 
+            id="password" 
+            value={user.password || ''} 
+            onChange={(e) => onInputChange(e, 'password')} 
+            required 
+            feedback={false} 
+            className={submitted && !user.password ? 'p-invalid' : ''}
+            toggleMask 
+          />
+          {submitted && !user.password && <small className="p-error">Contraseña es requerida.</small>}
         </div>
       </Dialog>
     </div>

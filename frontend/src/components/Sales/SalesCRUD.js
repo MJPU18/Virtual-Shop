@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -8,9 +8,12 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Toast } from 'primereact/toast';
 import { Card } from 'primereact/card';
 import { Divider } from 'primereact/divider';
+import { salesService } from '../../services/salesService';
+import { clientService } from '../../services/clientService';
+import { productService } from '../../services/productService';
 import './SalesCRUD.css';
 
-const SalesCRUD = () => {
+const SalesCRUD = ({ currentUser }) => {
   const [sales, setSales] = useState([]);
   const [sale, setSale] = useState({
     products: [],
@@ -18,25 +21,94 @@ const SalesCRUD = () => {
   });
   const [saleDialog, setSaleDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [clients] = useState([
-    { id: 1, cedula: '123456789', nombre: 'Juan Pérez' },
-    { id: 2, cedula: '987654321', nombre: 'María García' }
-  ]);
-  const [products] = useState([
-    { id: 1, codigo: 1, nombre: 'Melocotones', precioVenta: 30351, iva: 19 },
-    { id: 2, codigo: 2, nombre: 'Manzanas', precioVenta: 21549, iva: 19 },
-    { id: 3, codigo: 3, nombre: 'Plátanos', precioVenta: 35320, iva: 19 }
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const toast = useRef(null);
 
-  // Simular código consecutivo de venta
-  const [nextSaleCode, setNextSaleCode] = useState(1000);
+  useEffect(() => {
+    loadSales();
+    loadClients();
+    loadProducts();
+  }, []);
+
+  const loadSales = async () => {
+    try {
+      setLoading(true);
+      const salesData = await salesService.getAll();
+      setSales(salesData);
+    } catch (error) {
+      showError('Error al cargar ventas: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      setLoadingClients(true);
+      const clientsData = await clientService.getAll();
+      
+      const formattedClients = clientsData.map(client => ({
+        id: client.documentId,
+        cedula: client.documentId.toString(),
+        nombre: client.fullName || client.userName || `Cliente ${client.documentId}`
+      }));
+      
+      setClients(formattedClients);
+    } catch (error) {
+      showError('Error al cargar clientes: ' + error.message);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      const productsData = await productService.getAll();
+      
+      const formattedProducts = productsData.map(product => ({
+        id: product.productCode,
+        codigo: product.productCode,
+        nombre: product.productName,
+        precioVenta: product.salePrice,
+        iva: product.ivaPurchase
+      }));
+      
+      setProducts(formattedProducts);
+    } catch (error) {
+      showError('Error al cargar productos: ' + error.message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const showError = (message) => {
+    toast.current.show({
+      severity: 'error',
+      summary: 'Error',
+      detail: message,
+      life: 5000
+    });
+  };
+
+  const showSuccess = (message) => {
+    toast.current.show({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: message,
+      life: 3000
+    });
+  };
 
   const openNew = () => {
     setSale({
-      codeSale: nextSaleCode,
+      codeSale: null,
       idClient: '',
-      idUser: 1, // Simular usuario logueado
+      idUser: currentUser ? currentUser.documentId : null,
       products: [],
       currentProduct: {},
       ivaSale: 0,
@@ -52,50 +124,43 @@ const SalesCRUD = () => {
     setSaleDialog(false);
   };
 
-  const saveSale = () => {
+  const saveSale = async () => {
     setSubmitted(true);
 
     if (sale.idClient && sale.products.length > 0) {
-      let _sales = [...sales];
-      
-      // Crear nueva venta
-      const newSale = {
-        id: Math.random(),
-        codeSale: sale.codeSale,
-        idClient: sale.idClient,
-        idUser: sale.idUser,
-        ivaSale: sale.ivaSale,
-        totalSale: sale.totalSale,
-        valueSale: sale.valueSale,
-        products: [...sale.products],
-        fecha: new Date().toLocaleDateString()
-      };
+      try {
+        // Preparar datos para el backend - ahora enviamos el objeto Sale completo
+        const saleData = {
+          codeSale: null, // Se asigna en el backend
+          idClient: parseInt(sale.idClient),
+          idUser: sale.idUser,
+          ivaSale: sale.ivaSale, // Valor absoluto del IVA calculado en frontend
+          totalSale: sale.totalSale, // Total con IVA calculado en frontend
+          valueSale: sale.valueSale // Valor base sin IVA
+        };
 
-      _sales.push(newSale);
-      setSales(_sales);
-      setNextSaleCode(nextSaleCode + 1);
-      
-      toast.current.show({ 
-        severity: 'success', 
-        summary: 'Éxito', 
-        detail: 'Venta registrada correctamente', 
-        life: 3000 
-      });
-      
-      setSaleDialog(false);
-      setSale({ products: [], currentProduct: {} });
+        console.log('Datos enviados al backend:', saleData);
+
+        await salesService.create(saleData);
+        showSuccess('Venta registrada correctamente');
+        
+        await loadSales();
+        setSaleDialog(false);
+        setSale({ products: [], currentProduct: {} });
+      } catch (error) {
+        showError('Error al guardar venta: ' + error.message);
+      }
     }
   };
 
-  const deleteSale = (sale) => {
-    let _sales = sales.filter(s => s.id !== sale.id);
-    setSales(_sales);
-    toast.current.show({ 
-      severity: 'success', 
-      summary: 'Éxito', 
-      detail: 'Venta eliminada', 
-      life: 3000 
-    });
+  const deleteSale = async (sale) => {
+    try {
+      await salesService.delete(sale.codeSale);
+      showSuccess('Venta eliminada correctamente');
+      await loadSales();
+    } catch (error) {
+      showError('Error al eliminar venta: ' + error.message);
+    }
   };
 
   const findClient = (cedula) => {
@@ -103,7 +168,8 @@ const SalesCRUD = () => {
   };
 
   const findProduct = (codigo) => {
-    return products.find(product => product.codigo === codigo);
+    const codigoNum = parseInt(codigo);
+    return products.find(product => product.codigo === codigoNum);
   };
 
   const handleClientSearch = (cedula) => {
@@ -116,7 +182,7 @@ const SalesCRUD = () => {
   };
 
   const handleProductSearch = (codigo) => {
-    const product = findProduct(Number(codigo));
+    const product = findProduct(codigo);
     if (product) {
       setSale({
         ...sale, 
@@ -134,33 +200,45 @@ const SalesCRUD = () => {
   const addProductToSale = () => {
     if (sale.currentProduct.codigo && sale.currentProduct.cantidad > 0) {
       const updatedProducts = [...sale.products, sale.currentProduct];
-      const valueSale = updatedProducts.reduce((sum, product) => sum + (product.precioVenta * product.cantidad), 0);
-      const ivaSale = updatedProducts.reduce((sum, product) => sum + (product.precioVenta * product.cantidad * (product.iva / 100)), 0);
+      
+      // Calcular valores - Frontend hace el cálculo completo
+      const valueSale = updatedProducts.reduce((sum, product) => 
+        sum + (product.precioVenta * product.cantidad), 0);
+      
+      const ivaSale = updatedProducts.reduce((sum, product) => 
+        sum + (product.precioVenta * product.cantidad * (product.iva / 100)), 0);
+      
       const totalSale = valueSale + ivaSale;
 
       setSale({
         ...sale,
         products: updatedProducts,
         currentProduct: {},
-        valueSale,
-        ivaSale,
-        totalSale
+        valueSale: Math.round(valueSale * 100) / 100, // Redondear a 2 decimales
+        ivaSale: Math.round(ivaSale * 100) / 100,
+        totalSale: Math.round(totalSale * 100) / 100
       });
     }
   };
 
   const removeProduct = (index) => {
     const updatedProducts = sale.products.filter((_, i) => i !== index);
-    const valueSale = updatedProducts.reduce((sum, product) => sum + (product.precioVenta * product.cantidad), 0);
-    const ivaSale = updatedProducts.reduce((sum, product) => sum + (product.precioVenta * product.cantidad * (product.iva / 100)), 0);
+    
+    // Recalcular valores después de quitar producto
+    const valueSale = updatedProducts.reduce((sum, product) => 
+      sum + (product.precioVenta * product.cantidad), 0);
+    
+    const ivaSale = updatedProducts.reduce((sum, product) => 
+      sum + (product.precioVenta * product.cantidad * (product.iva / 100)), 0);
+    
     const totalSale = valueSale + ivaSale;
 
     setSale({
       ...sale,
       products: updatedProducts,
-      valueSale,
-      ivaSale,
-      totalSale
+      valueSale: Math.round(valueSale * 100) / 100,
+      ivaSale: Math.round(ivaSale * 100) / 100,
+      totalSale: Math.round(totalSale * 100) / 100
     });
   };
 
@@ -188,7 +266,7 @@ const SalesCRUD = () => {
   };
 
   const clientBodyTemplate = (rowData) => {
-    const client = clients.find(c => c.cedula === rowData.idClient);
+    const client = clients.find(c => c.cedula === rowData.idClient.toString());
     return client ? `${client.cedula} - ${client.nombre}` : rowData.idClient;
   };
 
@@ -206,7 +284,8 @@ const SalesCRUD = () => {
   const saleDialogFooter = (
     <React.Fragment>
       <Button label="Cancelar" icon="pi pi-times" className="p-button-text" onClick={hideDialog} />
-      <Button label="Confirmar Venta" icon="pi pi-check" onClick={saveSale} />
+      <Button label="Confirmar Venta" icon="pi pi-check" onClick={saveSale} 
+              disabled={!sale.idClient || sale.products.length === 0} />
     </React.Fragment>
   );
 
@@ -221,10 +300,9 @@ const SalesCRUD = () => {
         </div>
 
         <DataTable value={sales} responsiveLayout="scroll" paginator rows={10} 
-                   emptyMessage="No se encontraron ventas.">
+                   loading={loading} emptyMessage="No se encontraron ventas.">
           <Column field="codeSale" header="Código Venta" sortable></Column>
           <Column field="idClient" header="Cliente" body={clientBodyTemplate}></Column>
-          <Column field="fecha" header="Fecha" sortable></Column>
           <Column field="valueSale" header="Valor Venta" body={valueSaleBodyTemplate}></Column>
           <Column field="ivaSale" header="IVA" body={ivaSaleBodyTemplate}></Column>
           <Column field="totalSale" header="Total con IVA" body={totalSaleBodyTemplate}></Column>
@@ -236,11 +314,6 @@ const SalesCRUD = () => {
               modal className="p-fluid" footer={saleDialogFooter} onHide={hideDialog}>
         
         <div className="p-field">
-          <label htmlFor="codeSale">Código de Venta</label>
-          <InputText id="codeSale" value={sale.codeSale || ''} disabled />
-        </div>
-
-        <div className="p-field">
           <label htmlFor="idClient">Cédula del Cliente *</label>
           <InputText id="idClient" value={sale.idClient || ''} 
                      onChange={(e) => handleClientSearch(e.target.value)}
@@ -248,6 +321,7 @@ const SalesCRUD = () => {
                      placeholder="Ingrese la cédula del cliente" />
           {sale.clientName && <small className="p-text-success">Cliente: {sale.clientName}</small>}
           {submitted && !sale.idClient && <small className="p-error">Cédula del cliente es requerida.</small>}
+          {loadingClients && <small className="p-text-muted">Cargando clientes...</small>}
         </div>
 
         <Divider />
@@ -259,7 +333,9 @@ const SalesCRUD = () => {
             <label htmlFor="productCode">Código del Producto</label>
             <InputNumber id="productCode" value={sale.currentProduct.codigo || ''} 
                          onValueChange={(e) => handleProductSearch(e.value)}
-                         placeholder="Ingrese código del producto" />
+                         placeholder="Ingrese código del producto" 
+                         disabled={loadingProducts} />
+            {loadingProducts && <small className="p-text-muted">Cargando productos...</small>}
           </div>
           <div className="p-col-6">
             <label htmlFor="productName">Nombre del Producto</label>
@@ -296,7 +372,7 @@ const SalesCRUD = () => {
         <Button label="Agregar Producto" icon="pi pi-plus" 
                 className="p-button-primary p-mt-2" 
                 onClick={addProductToSale}
-                disabled={!sale.currentProduct.codigo || !sale.currentProduct.cantidad} />
+                disabled={!sale.currentProduct.codigo || !sale.currentProduct.cantidad || loadingProducts} />
 
         {sale.products.length > 0 && (
           <>
@@ -307,6 +383,7 @@ const SalesCRUD = () => {
               <Column field="nombre" header="Producto"></Column>
               <Column field="precioVenta" header="Precio" body={(rowData) => formatCurrency(rowData.precioVenta)}></Column>
               <Column field="cantidad" header="Cantidad"></Column>
+              <Column field="iva" header="IVA %" body={(rowData) => `${rowData.iva}%`}></Column>
               <Column field="total" header="Total" body={productTotalBodyTemplate}></Column>
               <Column body={(rowData, { rowIndex }) => (
                 <Button icon="pi pi-times" className="p-button-rounded p-button-danger p-button-sm" 
@@ -321,18 +398,18 @@ const SalesCRUD = () => {
         <Card>
           <div className="p-grid">
             <div className="p-col-6">
-              <strong>Valor de Venta:</strong>
+              <strong>Valor de Venta (Sin IVA):</strong>
             </div>
             <div className="p-col-6 text-right">
-              {formatCurrency(sale.valueSale)}
+              {formatCurrency(sale.valueSale || 0)}
             </div>
           </div>
           <div className="p-grid">
             <div className="p-col-6">
-              <strong>IVA:</strong>
+              <strong>Total IVA:</strong>
             </div>
             <div className="p-col-6 text-right">
-              {formatCurrency(sale.ivaSale)}
+              {formatCurrency(sale.ivaSale || 0)}
             </div>
           </div>
           <Divider />
@@ -341,7 +418,7 @@ const SalesCRUD = () => {
               <strong>Total con IVA:</strong>
             </div>
             <div className="p-col-6 text-right">
-              <strong>{formatCurrency(sale.totalSale)}</strong>
+              <strong>{formatCurrency(sale.totalSale || 0)}</strong>
             </div>
           </div>
         </Card>

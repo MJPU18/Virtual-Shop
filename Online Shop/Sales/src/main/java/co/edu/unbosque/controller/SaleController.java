@@ -32,54 +32,49 @@ public class SaleController {
 
     public SaleController() {
     }
-    
-    public record SaleDTO(Long codeSale, Long idClient, Long idUser, double ivaSale, double valueSale) {}
-
+ 
     
     @PostMapping(path = "/create", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> createSale(@RequestBody SaleDTO newSale){
+    public ResponseEntity<String> createSale(@RequestBody Sale newSale){
         
-        if (!validationService.validateClientExists(newSale.idClient)) {
-            return new ResponseEntity<String>("El cliente con ID " + newSale.idClient + " no existe.", 
+        if (!validationService.validateClientExists(newSale.getIdClient())) {
+            return new ResponseEntity<String>("El cliente con ID " + newSale.getIdClient() + " no existe.", 
                     HttpStatus.BAD_REQUEST);
         }
         
-        if (!validationService.validateUserExists(newSale.idUser)) {
-            return new ResponseEntity<String>("El usuario con ID " + newSale.idUser + " no existe.", 
+        if (!validationService.validateUserExists(newSale.getIdUser())) {
+            return new ResponseEntity<String>("El usuario con ID " + newSale.getIdUser() + " no existe.", 
                     HttpStatus.BAD_REQUEST);
         }
         
-        if(newSale.ivaSale<0) {
+        if(newSale.getIvaSale()<0) {
         	return new ResponseEntity<String>("El iva debe ser un valor mayor a 0.", HttpStatus.BAD_REQUEST);
         }
-        double calculate = newSale.valueSale + (newSale.ivaSale * newSale.valueSale / 100);
-        Sale registerSale= new Sale((long)1, newSale.idClient, newSale.idUser, newSale.ivaSale, calculate, newSale.valueSale);
-        registerSale.setCodeSale(null);
-        saleServ.create(registerSale);
+       
+        newSale.setCodeSale(null);
+        saleServ.create(newSale);
         return new ResponseEntity<String>("Venta creada exitosamente.", HttpStatus.CREATED);
     }
     
     @PutMapping(path = "/update/{codeSale}")
-    public ResponseEntity<String> updateSale(@PathVariable Long codeSale, @RequestBody SaleDTO updatedSale) {
+    public ResponseEntity<String> updateSale(@PathVariable Long codeSale, @RequestBody Sale updatedSale) {
         
-        if (!validationService.validateClientExists(updatedSale.idClient)) {
-            return new ResponseEntity<String>("El cliente con ID " + updatedSale.idClient + " no existe.", 
+        if (!validationService.validateClientExists(updatedSale.getIdClient())) {
+            return new ResponseEntity<String>("El cliente con ID " + updatedSale.getIdClient() + " no existe.", 
                     HttpStatus.BAD_REQUEST);
         }
         
-        if (!validationService.validateUserExists(updatedSale.idUser)) {
-            return new ResponseEntity<String>("El usuario con ID " + updatedSale.idUser + " no existe.", 
+        if (!validationService.validateUserExists(updatedSale.getIdUser())) {
+            return new ResponseEntity<String>("El usuario con ID " + updatedSale.getIdUser() + " no existe.", 
                     HttpStatus.BAD_REQUEST);
         }
         
         
-        if(updatedSale.ivaSale<0) {
+        if(updatedSale.getIvaSale()<0) {
         	return new ResponseEntity<String>("El iva debe ser un valor mayor a 0.", HttpStatus.BAD_REQUEST);
         }
-        double calculate = updatedSale.valueSale + (updatedSale.ivaSale * updatedSale.valueSale / 100);
-        Sale registerSale= new Sale((long)1, updatedSale.idClient, updatedSale.idUser, updatedSale.ivaSale, calculate, updatedSale.valueSale);
         
-        Sale result = saleServ.updateByCodeSale(codeSale, registerSale);
+        Sale result = saleServ.updateByCodeSale(codeSale, updatedSale);
         
         if (result != null) {
             return new ResponseEntity<>("Venta actualizada exitosamente.", HttpStatus.OK);

@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+// src/components/Auth/Login.js
+import React, { useState, useRef } from "react";
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
+import { Toast } from 'primereact/toast';
+import { authService } from '../../services/authService';
 import './Login.css';
 
 const Login = ({ onLogin }) => {
@@ -10,16 +13,44 @@ const Login = ({ onLogin }) => {
     usuario: '',
     contraseña: ''
   });
+  const [loading, setLoading] = useState(false);
+  const toast = useRef(null);
 
-  const handleSubmit = (e) => {
+  const showError = (message) => {
+    toast.current.show({
+      severity: 'error',
+      summary: 'Error de autenticación',
+      detail: message,
+      life: 5000
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if(credentials.usuario === 'administrativa' && credentials.contraseña === '1') {
-      onLogin(true);
+    setLoading(true);
+    
+    try {
+      const user = await authService.login(
+        credentials.usuario, 
+        credentials.contraseña
+      );
+      
+      if (user) {
+        onLogin(true, user);
+      } else {
+        showError('Usuario o contraseña incorrectos. Por favor, intente nuevamente.');
+      }
+    } catch (err) {
+      showError('Error de conexión con el servidor. Verifique su conexión e intente nuevamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="login-container">
+      <Toast ref={toast} position="top-right" />
+      
       <div className="login-background">
         <div className="login-content">
           <Card className="login-card">
@@ -36,6 +67,7 @@ const Login = ({ onLogin }) => {
                   onChange={(e) => setCredentials({...credentials, usuario: e.target.value})}
                   className="p-mb-3"
                   placeholder="Ingrese su usuario"
+                  disabled={loading}
                 />
               </div>
               <div className="p-field">
@@ -47,12 +79,15 @@ const Login = ({ onLogin }) => {
                   feedback={false}
                   placeholder="Ingrese su contraseña"
                   toggleMask
+                  disabled={loading}
                 />
               </div>
               <Button 
-                label="Ingresar" 
+                label={loading ? "Verificando..." : "Ingresar"} 
                 type="submit" 
                 className="login-button p-mt-3" 
+                disabled={loading}
+                icon={loading ? "pi pi-spin pi-spinner" : "pi pi-sign-in"}
               />
             </form>
             <div className="login-footer">

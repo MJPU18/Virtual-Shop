@@ -20,7 +20,7 @@ import co.edu.unbosque.service.UserService;
 import jakarta.transaction.Transactional;
 
 @RestController
-@CrossOrigin(origins = { "http://localhost:8086","*"})
+@CrossOrigin(origins = { "http://localhost:8086","http://localhost:3000","*"})
 @Transactional
 public class UserController {
 	
@@ -100,6 +100,16 @@ public class UserController {
 	public ResponseEntity<Boolean> checkUserExists(@PathVariable Long documentId) {
 	    boolean exists = userServ.exist(documentId);
 	    return new ResponseEntity<>(exists, HttpStatus.OK);
+	}
+	
+	@GetMapping(path = "/login/{username}/{password}")
+	public ResponseEntity<User> checkUserExists(@PathVariable String username,@PathVariable String password) {
+		User user = userServ.login(username, password);
+	    if (user != null) {
+	        return new ResponseEntity<>(user, HttpStatus.OK);
+	    } else {
+	        return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+	    }
 	}
 
 }

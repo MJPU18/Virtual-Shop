@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
+import { clientService } from '../../services/clientService';
 import './ClientsCRUD.css';
 
 const ClientsCRUD = () => {
@@ -12,7 +13,43 @@ const ClientsCRUD = () => {
   const [client, setClient] = useState({});
   const [clientDialog, setClientDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const toast = React.useRef(null);
+  const [loading, setLoading] = useState(true);
+  const toast = useRef(null);
+
+  // Cargar clientes al iniciar el componente
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      setLoading(true);
+      const clientsData = await clientService.getAll();
+      setClients(clientsData);
+    } catch (error) {
+      showError('Error al cargar clientes: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showError = (message) => {
+    toast.current.show({
+      severity: 'error',
+      summary: 'Error',
+      detail: message,
+      life: 5000
+    });
+  };
+
+  const showSuccess = (message) => {
+    toast.current.show({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: message,
+      life: 3000
+    });
+  };
 
   const openNew = () => {
     setClient({});
@@ -25,65 +62,64 @@ const ClientsCRUD = () => {
     setClientDialog(false);
   };
 
-  const saveClient = () => {
+  const saveClient = async () => {
     setSubmitted(true);
 
-    if (client.cedula && client.nombre && client.direccion && client.telefono && client.correo) {
-      let _clients = [...clients];
-      
-      // Validar si la cédula ya existe
-      const existingClient = _clients.find(c => c.cedula === client.cedula);
-      if (existingClient && (!client.id || client.id !== existingClient.id)) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Error', 
-          detail: 'Ya existe un cliente con esta cédula', 
-          life: 3000 
-        });
-        return;
-      }
+    // Validar campos requeridos según la estructura del backend
+    if (!client.documentId || !client.fullName || !client.address || !client.phone || !client.email) {
+      showError('Todos los campos son requeridos');
+      return;
+    }
+
+    try {
+      // Preparar datos para el backend (con los nombres de campo correctos)
+      const clientData = {
+        documentId: parseInt(client.documentId),
+        fullName: client.fullName,
+        address: client.address,
+        phone: client.phone,
+        email: client.email
+      };
 
       if (client.id) {
         // Editar cliente existente
-        const index = _clients.findIndex(c => c.id === client.id);
-        _clients[index] = client;
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Cliente actualizado', 
-          life: 3000 
-        });
+        await clientService.update(client.documentId, clientData);
+        showSuccess('Cliente actualizado correctamente');
       } else {
         // Crear nuevo cliente
-        _clients.push({...client, id: Math.random()});
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Cliente creado', 
-          life: 3000 
-        });
+        await clientService.create(clientData);
+        showSuccess('Cliente creado correctamente');
       }
-      
-      setClients(_clients);
+
+      // Recargar la lista de clientes
+      await loadClients();
       setClientDialog(false);
       setClient({});
+    } catch (error) {
+      showError('Error al guardar cliente: ' + error.message);
     }
   };
 
   const editClient = (client) => {
-    setClient({...client});
+    setClient({
+      id: client.documentId,
+      documentId: client.documentId,
+      fullName: client.fullName,
+      address: client.address,
+      phone: client.phone,
+      email: client.email
+    });
     setClientDialog(true);
   };
 
-  const deleteClient = (client) => {
-    let _clients = clients.filter(c => c.id !== client.id);
-    setClients(_clients);
-    toast.current.show({ 
-      severity: 'success', 
-      summary: 'Éxito', 
-      detail: 'Cliente eliminado', 
-      life: 3000 
-    });
+  const deleteClient = async (client) => {
+    try {
+      await clientService.delete(client.documentId);
+      showSuccess('Cliente eliminado correctamente');
+      await loadClients();
+    } catch (error) {
+      showError('Error al eliminar cliente: ' + error.message);
+    }
   };
 
   const onInputChange = (e, name) => {
@@ -122,12 +158,12 @@ const ClientsCRUD = () => {
         </div>
 
         <DataTable value={clients} responsiveLayout="scroll" paginator rows={10} 
-                   emptyMessage="No se encontraron clientes.">
-          <Column field="cedula" header="Cédula" sortable></Column>
-          <Column field="nombre" header="Nombre Completo" sortable></Column>
-          <Column field="direccion" header="Dirección"></Column>
-          <Column field="telefono" header="Teléfono"></Column>
-          <Column field="correo" header="Correo Electrónico"></Column>
+                   loading={loading} emptyMessage="No se encontraron clientes.">
+          <Column field="documentId" header="Cédula" sortable></Column>
+          <Column field="fullName" header="Nombre Completo" sortable></Column>
+          <Column field="address" header="Dirección"></Column>
+          <Column field="phone" header="Teléfono"></Column>
+          <Column field="email" header="Correo Electrónico"></Column>
           <Column body={actionBodyTemplate} header="Acciones" exportable={false} style={{ minWidth: '8rem' }}></Column>
         </DataTable>
       </div>
@@ -135,40 +171,61 @@ const ClientsCRUD = () => {
       <Dialog visible={clientDialog} style={{ width: '500px' }} header="Detalles del Cliente" 
               modal className="p-fluid" footer={clientDialogFooter} onHide={hideDialog}>
         <div className="p-field">
-          <label htmlFor="cedula">Cédula *</label>
-          <InputText id="cedula" value={client.cedula || ''} 
-                     onChange={(e) => onInputChange(e, 'cedula')} 
-                     required autoFocus 
-                     className={submitted && !client.cedula ? 'p-invalid' : ''} />
-          {submitted && !client.cedula && <small className="p-error">Cédula es requerida.</small>}
+          <label htmlFor="documentId">Cédula *</label>
+          <InputText 
+            id="documentId" 
+            value={client.documentId || ''} 
+            onChange={(e) => onInputChange(e, 'documentId')} 
+            required 
+            autoFocus 
+            keyfilter="int" 
+            className={submitted && !client.documentId ? 'p-invalid' : ''} 
+          />
+          {submitted && !client.documentId && <small className="p-error">Cédula es requerida.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="nombre">Nombre Completo *</label>
-          <InputText id="nombre" value={client.nombre || ''} 
-                     onChange={(e) => onInputChange(e, 'nombre')} 
-                     required className={submitted && !client.nombre ? 'p-invalid' : ''} />
-          {submitted && !client.nombre && <small className="p-error">Nombre es requerido.</small>}
+          <label htmlFor="fullName">Nombre Completo *</label>
+          <InputText 
+            id="fullName" 
+            value={client.fullName || ''} 
+            onChange={(e) => onInputChange(e, 'fullName')} 
+            required 
+            className={submitted && !client.fullName ? 'p-invalid' : ''} 
+          />
+          {submitted && !client.fullName && <small className="p-error">Nombre es requerido.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="direccion">Dirección *</label>
-          <InputText id="direccion" value={client.direccion || ''} 
-                     onChange={(e) => onInputChange(e, 'direccion')} 
-                     required className={submitted && !client.direccion ? 'p-invalid' : ''} />
-          {submitted && !client.direccion && <small className="p-error">Dirección es requerida.</small>}
+          <label htmlFor="address">Dirección *</label>
+          <InputText 
+            id="address" 
+            value={client.address || ''} 
+            onChange={(e) => onInputChange(e, 'address')} 
+            required 
+            className={submitted && !client.address ? 'p-invalid' : ''} 
+          />
+          {submitted && !client.address && <small className="p-error">Dirección es requerida.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="telefono">Teléfono *</label>
-          <InputText id="telefono" value={client.telefono || ''} 
-                     onChange={(e) => onInputChange(e, 'telefono')} 
-                     required className={submitted && !client.telefono ? 'p-invalid' : ''} />
-          {submitted && !client.telefono && <small className="p-error">Teléfono es requerido.</small>}
+          <label htmlFor="phone">Teléfono *</label>
+          <InputText 
+            id="phone" 
+            value={client.phone || ''} 
+            onChange={(e) => onInputChange(e, 'phone')} 
+            required 
+            className={submitted && !client.phone ? 'p-invalid' : ''} 
+          />
+          {submitted && !client.phone && <small className="p-error">Teléfono es requerido.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="correo">Correo Electrónico *</label>
-          <InputText id="correo" value={client.correo || ''} 
-                     onChange={(e) => onInputChange(e, 'correo')} 
-                     required className={submitted && !client.correo ? 'p-invalid' : ''} />
-          {submitted && !client.correo && <small className="p-error">Correo es requerido.</small>}
+          <label htmlFor="email">Correo Electrónico *</label>
+          <InputText 
+            id="email" 
+            value={client.email || ''} 
+            onChange={(e) => onInputChange(e, 'email')} 
+            required 
+            className={submitted && !client.email ? 'p-invalid' : ''} 
+          />
+          {submitted && !client.email && <small className="p-error">Correo es requerido.</small>}
         </div>
       </Dialog>
     </div>

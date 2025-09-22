@@ -94,5 +94,16 @@ public class UserService implements CRUDOperation<User>{
         }
         return pattern.matcher(email).matches();
     }
+	
+	public User login(String username, String password) {
+		Optional<User> found=userRepo.findByUsuario(username);
+		if(found.isPresent()) {
+			User user=found.get();
+			if(password.equals(user.getPassword())) {
+				return user;
+			}
+		}
+		return null;
+	}
 
 }

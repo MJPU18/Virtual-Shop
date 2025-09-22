@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -6,17 +6,66 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Toast } from 'primereact/toast';
+import { productService } from '../../services/productService';
 import './ProductsCRUD.css';
 
 const ProductsCRUD = () => {
   const [products, setProducts] = useState([]);
-  const [product, setProduct] = useState({});
+  const [product, setProduct] = useState({
+    nombre: '',
+    nitProveedor: null,
+    precioCompra: null,
+    ivaPurchase: null,
+    precioVenta: null
+  });
   const [productDialog, setProductDialog] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const toast = useRef(null);
 
+  // Cargar productos al iniciar el componente
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const productsData = await productService.getAll();
+      setProducts(productsData);
+    } catch (error) {
+      showError('Error al cargar productos: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showError = (message) => {
+    toast.current.show({
+      severity: 'error',
+      summary: 'Error',
+      detail: message,
+      life: 5000
+    });
+  };
+
+  const showSuccess = (message) => {
+    toast.current.show({
+      severity: 'success',
+      summary: 'Éxito',
+      detail: message,
+      life: 3000
+    });
+  };
+
   const openNew = () => {
-    setProduct({});
+    setProduct({
+      nombre: '',
+      nitProveedor: null,
+      precioCompra: null,
+      ivaPurchase: null,
+      precioVenta: null
+    });
     setSubmitted(false);
     setProductDialog(true);
   };
@@ -26,62 +75,73 @@ const ProductsCRUD = () => {
     setProductDialog(false);
   };
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     setSubmitted(true);
 
-    if (product.nombre && product.nitProveedor && product.precioCompra && product.iva && product.precioVenta) {
-      let _products = [...products];
-      
-      const existingProduct = _products.find(p => p.nombre === product.nombre);
-      if (existingProduct && (!product.id || product.id !== existingProduct.id)) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Error', 
-          detail: 'Ya existe un producto con este nombre', 
-          life: 3000 
-        });
-        return;
-      }
+    // Validar que todos los campos requeridos estén presentes
+    const hasAllRequiredFields = 
+      product.nombre && 
+      product.nitProveedor !== null && 
+      product.precioCompra !== null && 
+      product.ivaPurchase !== null && 
+      product.precioVenta !== null;
 
-      if (product.id) {
-        const index = _products.findIndex(p => p.id === product.id);
-        _products[index] = product;
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Producto actualizado', 
-          life: 3000 
+    if (hasAllRequiredFields) {
+      try {
+        // Convertir NIT a número
+        const productData = {
+          ...product,
+          nitProveedor: Number(product.nitProveedor)
+        };
+
+        if (product.productCode) {
+          // Editar producto existente
+          await productService.update(product.productCode, productData);
+          showSuccess('Producto actualizado correctamente');
+        } else {
+          // Crear nuevo producto
+          await productService.create(productData);
+          showSuccess('Producto creado correctamente');
+        }
+
+        // Recargar la lista de productos
+        await loadProducts();
+        setProductDialog(false);
+        setProduct({
+          nombre: '',
+          nitProveedor: null,
+          precioCompra: null,
+          ivaPurchase: null,
+          precioVenta: null
         });
-      } else {
-        _products.push({...product, id: Math.random()});
-        toast.current.show({ 
-          severity: 'success', 
-          summary: 'Éxito', 
-          detail: 'Producto creado', 
-          life: 3000 
-        });
+      } catch (error) {
+        showError('Error al guardar producto: ' + error.message);
       }
-      
-      setProducts(_products);
-      setProductDialog(false);
-      setProduct({});
+    } else {
+      showError('Por favor, complete todos los campos requeridos');
     }
   };
 
   const editProduct = (product) => {
-    setProduct({...product});
+    setProduct({
+      productCode: product.productCode,
+      nombre: product.productName,
+      nitProveedor: product.providerNit,
+      precioCompra: product.purchasePrice,
+      ivaPurchase: product.ivaPurchase,
+      precioVenta: product.salePrice
+    });
     setProductDialog(true);
   };
 
-  const deleteProduct = (product) => {
-    let _products = products.filter(p => p.id !== product.id);
-    setProducts(_products);
-    toast.current.show({ 
-      severity: 'success', 
-      summary: 'Éxito', 
-      detail: 'Producto eliminado', 
-      life: 3000 
-    });
+  const deleteProduct = async (product) => {
+    try {
+      await productService.delete(product.productCode);
+      showSuccess('Producto eliminado correctamente');
+      await loadProducts();
+    } catch (error) {
+      showError('Error al eliminar producto: ' + error.message);
+    }
   };
 
   const onInputChange = (e, name) => {
@@ -97,31 +157,32 @@ const ProductsCRUD = () => {
     setProduct(_product);
   };
 
-  const calculatePrecioVenta = (precioCompra, iva) => {
-    if (precioCompra && iva) {
-      const ivaValue = precioCompra * (iva / 100);
+  const calculatePrecioVenta = (precioCompra, ivaPurchase) => {
+    if (precioCompra !== null && ivaPurchase !== null) {
+      const ivaValue = precioCompra * (ivaPurchase / 100);
       return precioCompra + ivaValue;
     }
-    return 0;
+    return null;
   };
 
   const handlePrecioCompraChange = (value) => {
     onNumberChange(value, 'precioCompra');
-    if (product.iva) {
-      const nuevoPrecioVenta = calculatePrecioVenta(value, product.iva);
+    if (product.ivaPurchase !== null) {
+      const nuevoPrecioVenta = calculatePrecioVenta(value, product.ivaPurchase);
       setProduct({...product, precioCompra: value, precioVenta: nuevoPrecioVenta});
     }
   };
 
   const handleIvaChange = (value) => {
-    onNumberChange(value, 'iva');
-    if (product.precioCompra) {
+    onNumberChange(value, 'ivaPurchase');
+    if (product.precioCompra !== null) {
       const nuevoPrecioVenta = calculatePrecioVenta(product.precioCompra, value);
-      setProduct({...product, iva: value, precioVenta: nuevoPrecioVenta});
+      setProduct({...product, ivaPurchase: value, precioVenta: nuevoPrecioVenta});
     }
   };
 
   const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '';
     return value.toLocaleString('es-CO', {
       style: 'currency',
       currency: 'COP',
@@ -130,15 +191,19 @@ const ProductsCRUD = () => {
   };
 
   const precioCompraBodyTemplate = (rowData) => {
-    return formatCurrency(rowData.precioCompra);
+    return formatCurrency(rowData.purchasePrice);
   };
 
   const ivaBodyTemplate = (rowData) => {
-    return `${rowData.iva}%`;
+    return `${rowData.ivaPurchase}%`;
   };
 
   const precioVentaBodyTemplate = (rowData) => {
-    return formatCurrency(rowData.precioVenta);
+    return formatCurrency(rowData.salePrice);
+  };
+
+  const nitProveedorBodyTemplate = (rowData) => {
+    return rowData.providerNit;
   };
 
   const productDialogFooter = (
@@ -170,12 +235,12 @@ const ProductsCRUD = () => {
         </div>
 
         <DataTable value={products} responsiveLayout="scroll" paginator rows={10} 
-                   emptyMessage="No se encontraron productos.">
-          <Column field="nombre" header="Nombre del Producto" sortable></Column>
-          <Column field="nitProveedor" header="NIT Proveedor" sortable></Column>
-          <Column field="precioCompra" header="Precio Compra" body={precioCompraBodyTemplate}></Column>
-          <Column field="iva" header="IVA" body={ivaBodyTemplate}></Column>
-          <Column field="precioVenta" header="Precio Venta" body={precioVentaBodyTemplate}></Column>
+                   loading={loading} emptyMessage="No se encontraron productos.">
+          <Column field="productName" header="Nombre del Producto" sortable></Column>
+          <Column field="providerNit" header="NIT Proveedor" body={nitProveedorBodyTemplate} sortable></Column>
+          <Column field="purchasePrice" header="Precio Compra" body={precioCompraBodyTemplate}></Column>
+          <Column field="ivaPurchase" header="IVA" body={ivaBodyTemplate}></Column>
+          <Column field="salePrice" header="Precio Venta" body={precioVentaBodyTemplate}></Column>
           <Column body={actionBodyTemplate} header="Acciones" exportable={false} style={{ minWidth: '8rem' }}></Column>
         </DataTable>
       </div>
@@ -192,32 +257,53 @@ const ProductsCRUD = () => {
         </div>
         <div className="p-field">
           <label htmlFor="nitProveedor">NIT del Proveedor *</label>
-          <InputText id="nitProveedor" value={product.nitProveedor || ''} 
-                     onChange={(e) => onInputChange(e, 'nitProveedor')} 
-                     required className={submitted && !product.nitProveedor ? 'p-invalid' : ''} />
-          {submitted && !product.nitProveedor && <small className="p-error">NIT del proveedor es requerido.</small>}
+          <InputNumber 
+            id="nitProveedor" 
+            value={product.nitProveedor} 
+            onValueChange={(e) => onNumberChange(e.value, 'nitProveedor')}
+            mode="decimal" 
+            useGrouping={false}
+            min={0}
+            className={submitted && product.nitProveedor === null ? 'p-invalid' : ''} 
+          />
+          {submitted && product.nitProveedor === null && <small className="p-error">NIT del proveedor es requerido.</small>}
         </div>
         <div className="p-field">
           <label htmlFor="precioCompra">Precio de Compra *</label>
-          <InputNumber id="precioCompra" value={product.precioCompra} 
-                       onValueChange={(e) => handlePrecioCompraChange(e.value)}
-                       mode="currency" currency="COP" locale="es-CO"
-                       required className={submitted && !product.precioCompra ? 'p-invalid' : ''} />
-          {submitted && !product.precioCompra && <small className="p-error">Precio de compra es requerido.</small>}
+          <InputNumber 
+            id="precioCompra" 
+            value={product.precioCompra} 
+            onValueChange={(e) => handlePrecioCompraChange(e.value)}
+            mode="currency" 
+            currency="COP" 
+            locale="es-CO"
+            className={submitted && product.precioCompra === null ? 'p-invalid' : ''} 
+          />
+          {submitted && product.precioCompra === null && <small className="p-error">Precio de compra es requerido.</small>}
         </div>
         <div className="p-field">
-          <label htmlFor="iva">IVA (%) *</label>
-          <InputNumber id="iva" value={product.iva} 
-                       onValueChange={(e) => handleIvaChange(e.value)}
-                       min={0} max={100} suffix="%"
-                       required className={submitted && !product.iva ? 'p-invalid' : ''} />
-          {submitted && !product.iva && <small className="p-error">IVA es requerido.</small>}
+          <label htmlFor="ivaPurchase">IVA (%) *</label>
+          <InputNumber 
+            id="ivaPurchase" 
+            value={product.ivaPurchase} 
+            onValueChange={(e) => handleIvaChange(e.value)}
+            min={0} 
+            max={100} 
+            suffix="%"
+            className={submitted && product.ivaPurchase === null ? 'p-invalid' : ''} 
+          />
+          {submitted && product.ivaPurchase === null && <small className="p-error">IVA es requerido.</small>}
         </div>
         <div className="p-field">
           <label htmlFor="precioVenta">Precio de Venta *</label>
-          <InputNumber id="precioVenta" value={product.precioVenta} 
-                       mode="currency" currency="COP" locale="es-CO"
-                       disabled className="p-disabled" />
+          <InputNumber 
+            id="precioVenta" 
+            value={product.precioVenta} 
+            mode="currency" 
+            currency="COP" 
+            locale="es-CO"
+            disabled 
+          />
           <small className="p-text-muted">Calculado automáticamente</small>
         </div>
       </Dialog>
